@@ -41,6 +41,8 @@ public class Server {
             // read only request line for simplicity
             // must be in form GET /path HTTP/1.1
             final var requestLine = in.readLine();
+            final var request = new Request(requestLine);
+            handleRequest(request, out);
             final var parts = requestLine.split(" ");
 
             if (parts.length != 3) {
@@ -91,6 +93,17 @@ public class Server {
                             "\r\n"
             ).getBytes());
             Files.copy(filePath, out);
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    private void handleRequest(Request request, OutputStream out) throws IOException {
+        final var path = request.getPath();
+        final var queryParams = request.getQueryParams();
+        final var response = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
+        try {
+            out.write(response.getBytes());
             out.flush();
         } catch (IOException e) {
             e.printStackTrace();
