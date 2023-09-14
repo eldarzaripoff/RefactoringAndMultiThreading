@@ -41,17 +41,15 @@ public class Server {
             // read only request line for simplicity
             // must be in form GET /path HTTP/1.1
             final var requestLine = in.readLine();
-            final var request = new Request(requestLine);
-            handleRequest(request, out);
             final var parts = requestLine.split(" ");
 
             if (parts.length != 3) {
                 // just close socket
                 return;
             }
-
-            final var path = parts[1];
-            if (!validPaths.contains(path)) {
+            Request request = new Request(parts, validPaths, out);
+            //final var path = parts[1];
+            if (!validPaths.contains(request.getPath())) {
                 out.write((
                         "HTTP/1.1 404 Not Found\r\n" +
                                 "Content-Length: 0\r\n" +
@@ -61,13 +59,11 @@ public class Server {
                 out.flush();
                 return;
             }
-
-            final var filePath = Path.of(".", "public", path);
-            final var mimeType = Files.probeContentType(filePath);
+            final var mimeType = Files.probeContentType(request.getQueryParam());
 
             // special case for classic
-            if (path.equals("/classic.html")) {
-                final var template = Files.readString(filePath);
+            if (request.getPath().equals("/classic.html")) {
+                final var template = Files.readString(request.getQueryParam());
                 final var content = template.replace(
                         "{time}",
                         LocalDateTime.now().toString()
@@ -84,7 +80,7 @@ public class Server {
                 return;
             }
 
-            final var length = Files.size(filePath);
+            final var length = Files.size(request.getQueryParam());
             out.write((
                     "HTTP/1.1 200 OK\r\n" +
                             "Content-Type: " + mimeType + "\r\n" +
@@ -92,18 +88,7 @@ public class Server {
                             "Connection: close\r\n" +
                             "\r\n"
             ).getBytes());
-            Files.copy(filePath, out);
-            out.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-    private void handleRequest(Request request, OutputStream out) throws IOException {
-        final var path = request.getPath();
-        final var queryParams = request.getQueryParams();
-        final var response = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
-        try {
-            out.write(response.getBytes());
+            Files.copy(request.getQueryParam(), out);
             out.flush();
         } catch (IOException e) {
             e.printStackTrace();

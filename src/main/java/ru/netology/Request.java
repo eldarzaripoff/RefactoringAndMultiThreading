@@ -1,51 +1,40 @@
 package ru.netology;
 
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
-import org.apache.http.client.utils.URLEncodedUtils;
+import java.io.BufferedOutputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 
 public class Request {
-    private final Map<String, String> queryParams = new HashMap<>();
+    String[] parts;
+    List<String> validPaths;
+    BufferedOutputStream out;
     String path;
-    String requestLine;
-    String body;
-    private String method;
-
-    public Request(String requestLine) {
-        //this.queryParams = queryParams;
-        this.requestLine = requestLine;
-//        this.headers = headers;
-//        this.body = body;
-//        this.path = path;
-//        this.method = method;
+    public Request (String[] parts, List<String> validPaths, BufferedOutputStream out) {
+        this.parts = parts;
+        this.validPaths = validPaths;
+        this.out = out;
     }
+    public Path getQueryParam() throws IOException {
+        final var path = parts[1];
+//        if (!validPaths.contains(path)) {
+//            out.write((
+//                    "HTTP/1.1 404 Not Found\r\n" +
+//                            "Content-Length: 0\r\n" +
+//                            "Connection: close\r\n" +
+//                            "\r\n"
+//            ).getBytes());
+//            out.flush();
+//            throw new FileNotFoundException("File not found: " + path); // генерация исключения
+//        }
 
-
-    public String getQueryParam(String name) {
-        return queryParams.get(name);
+        final var filePath = Path.of(".", "public", path);
+        return filePath;
     }
-
-    public Map<String, String> getQueryParams() {
-        return queryParams;
-    }
-
     public String getPath() {
-        final var parts = requestLine.split("\\s+");
-        if (parts.length != 3) {
-            throw new IllegalArgumentException("Invalid request string: " + requestLine);
-        }
-        this.method = parts[0];
-        final var uri = URI.create(parts[1]);
-        this.path = uri.getPath();
-        final var query = uri.getQuery();
-        if (query != null) {
-            final var params = URLEncodedUtils.parse(query, StandardCharsets.UTF_8);
-            for (var param : params) {
-                this.queryParams.put(param.getName(), param.getValue());
-            }
-        }
         return path;
     }
-}
+
+    }
