@@ -1,5 +1,7 @@
 package ru.netology;
 
+import org.apache.http.NameValuePair;
+
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -41,15 +43,10 @@ public class Server {
             // read only request line for simplicity
             // must be in form GET /path HTTP/1.1
             final var requestLine = in.readLine();
-            final var parts = requestLine.split(" ");
+            final var request = new Request(requestLine);
 
-            if (parts.length != 3) {
-                // just close socket
-                return;
-            }
-            Request request = new Request(parts, validPaths, out);
-            //final var path = parts[1];
-            if (!validPaths.contains(request.getPath())) {
+            final var path = request.getPath();
+            if (!validPaths.contains(path)) {
                 out.write((
                         "HTTP/1.1 404 Not Found\r\n" +
                                 "Content-Length: 0\r\n" +
@@ -59,14 +56,19 @@ public class Server {
                 out.flush();
                 return;
             }
-            final var mimeType = Files.probeContentType(request.getQueryParam());
+
+            final var filePath = Path.of(".", "public", path);
+            final var mimeType = Files.probeContentType(filePath);
 
             // special case for classic
-            if (request.getPath().equals("/classic.html")) {
-                final var template = Files.readString(request.getQueryParam());
+            if (path.equals("/classic.html")) {
+                final var template = Files.readString(filePath);
+                final var queryParams = request.getQueryParams();
+                final var timeParam = queryParams.stream().filter(p -> p.getName().equals("time")).findFirst();
+                final var time = timeParam.isPresent() ? timeParam.get().getValue() : LocalDateTime.now().toString();
                 final var content = template.replace(
                         "{time}",
-                        LocalDateTime.now().toString()
+                        time
                 ).getBytes();
                 out.write((
                         "HTTP/1.1 200 OK\r\n" +
@@ -80,7 +82,7 @@ public class Server {
                 return;
             }
 
-            final var length = Files.size(request.getQueryParam());
+            final var length = Files.size(filePath);
             out.write((
                     "HTTP/1.1 200 OK\r\n" +
                             "Content-Type: " + mimeType + "\r\n" +
@@ -88,7 +90,7 @@ public class Server {
                             "Connection: close\r\n" +
                             "\r\n"
             ).getBytes());
-            Files.copy(request.getQueryParam(), out);
+            Files.copy(filePath, out);
             out.flush();
         } catch (IOException e) {
             e.printStackTrace();
